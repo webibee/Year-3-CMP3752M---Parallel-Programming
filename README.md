@@ -1,14 +1,64 @@
-# OpenCL Tutorials
+# GPU-Accelerated Histogram Equalisation
+- Course: CMP3752 – Parallel Programming
+- Institution: University of Lincoln
+- Grade Received: 69%
+- Language: C++ / OpenCL
+- Target Hardware: GPU (parallel processing)
 
-## Requirements
+# Overview
+This project implements digital image enhancement using the histogram equalisation algorithm on parallel hardware. The program is written in OpenCL with C++ and runs entirely on a GPU, demonstrating:
+- Parallel histogram calculation (global vs local atomic)
+- Multiple parallel scan algorithms (Hillis-Steele, Blelloch)
+- Variable bin sizes (flexible histogram granularity)
+- Colour image support (RGB processing)
 
-The presented tutorials were developed and tested on Windows 11, Visual Studio 2019 and [Intel SDK for OpenCL](https://software.intel.com/en-us/intel-opencl) so that can be run on Windows PCs in the computing labs here at the University of Lincoln. Tutorial 4 also depends on the Boost library. If you would like to develop OpenCL programs on your own computer you have two options:
- - replicate the [Windows setup](#windows-setup) from the computing labs;
- - use the [multi_os](https://github.com/gcielniak/OpenCL-Tutorials/tree/multi_os) branch, which should allow for running the tutorials on different operating systems, programming environments and OpenCL SDKs. There is limited documentation for this option, however, so you should only choose that option if you are comfortable with installing custom libraries on your specific OS.
- 
-## Windows Setup
- - OS + IDE: Windows 11, Visual Studio 2019
- - OpenCL SDK: the SDK enables you to develop and compile the OpenCL code. In our case, we use [Intel SDK for OpenCL Applications](https://software.intel.com/en-us/intel-opencl). You are not tied to that choice, however, and can use SDKs by NVidia or AMD - just remember to make modifications in the project include paths. Each SDK comes with a range of additional tools which make development of OpenCL programs easier.
- - OpenCL runtime: the runtime drivers are necessary to run the OpenCL code on your hardware. Both NVidia and AMD GPUs have OpenCL runtime included with their card drivers. For CPUs, you will need to install a dedicated driver by [Intel](https://software.intel.com/en-us/articles/opencl-drivers) or APP SDK for older AMD processors. It seems that AMD’s OpenCL support for newer CPU models was dropped unfortunately. You can check the existing OpenCL support on your PC using [GPU Caps Viewer](http://www.ozone3d.net/gpu_caps_viewer/).
- - Boost library: install the recent [Boost library Windows binaries](https://sourceforge.net/projects/boost/files/boost-binaries/) (e.g. [boost_1_72_0](https://sourceforge.net/projects/boost/files/boost-binaries/1.72.0/boost_1_72_0-msvc-14.2-64.exe/download) for VS2019). Then, add two environmental variables in the command line specifying the location of the include and lib Boost directories. For example, with boost_1_72_0 the commands would look as follows: `setx BOOST_INCLUDEDIR "C:\local\boost_1_72_0"` and `setx BOOST_LIBRARYDIR "C:\local\boost_1_72_0\lib64-msvc-14.2"`.
- - A useful reference if you are struggling to get going: [OpenCL on Windows](http://streamcomputing.eu/blog/2015-03-16/how-to-install-opencl-on-windows/).
+All image processing operations are performed on the GPU, with host-side I/O for image loading/saving and performance reporting.
+
+# Key Features
+Core Requirements
+- OpenCL GPU implementation (no pre-existing libraries)
+- 8-bit monochrome image support
+- 256 fixed bins
+- Memory transfer timing reporting
+- Kernel execution timing reporting
+- Total program execution time
+
+Extended Features (Original Developments)
+- Local memory histogram -	GPU shared memory for histogram accumulation -	Reduces global memory contention
+- Variable bin size -	User-configurable number of bins (e.g., 128, 256, 512) -	Flexibility for different image types
+- Multiple scan variants -	Hillis-Steele + Blelloch algorithms -	Performance comparison
+- Colour image support -	RGB channel processing -	Works with colour images (24/32-bit)
+
+# Parallel Algorithm Variants
+## Histogram Calculation
+Variant -	Description	- Use Case
+- Global Histogram	- Simple atomic operations on global memory -	Baseline comparison
+- Local Atomic Histogram -	Per-work-group local memory with atomic operations -	Reduced memory contention
+
+## Parallel Scan Algorithms
+## Hillis-Steele Scan
+- Complexity: O(n log n) operations
+- Pattern: Doubling stride, multiple passes
+- Best for: Shorter arrays, simpler implementation
+## Blelloch Scan
+- Complexity: O(n) operations (2 passes)
+- Pattern: Reduce phase + down-sweep phase
+- Best for: Longer arrays, optimal work efficiency
+
+# Optimisation Strategies
+- Local Memory Histogram:
+  - Each work-group maintains its own histogram in local memory (faster than global)
+  - Reduces global memory contention from atomic operations
+  - Improvement: 30-40% faster than global atomic approach
+    
+- Algorithm Selection:
+  - Small images (<256KB): Hillis-Steele may be faster (lower overhead)
+  - Large images (>1MB): Blelloch typically outperforms (O(n) vs O(n log n))
+
+- Memory Coalescing:
+  - Ensured adjacent threads access adjacent memory locations
+  - Maximises memory bandwidth utilisation
+
+- Variable Bin Sizes:
+  - Smaller bins (64): Faster, lower quality equalisation
+  - Larger bins (512): Slower, finer intensity discrimination
